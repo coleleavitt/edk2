@@ -513,6 +513,16 @@
 [PcdsFixedAtBuild]
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeMemorySize|1
 !if $(SMM_REQUIRE) == FALSE
+  #
+  # SMBIOS Spoofing: Override default EDK II / QEMU values with realistic ones
+  # to bypass Virtual Machine detection. These values are used by the fallback
+  # mechanism in SmbiosPlatformDxe.c when QEMU's tables are disabled.
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor|L"Dell Inc."
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSystemManufacturer|L"Dell Inc."
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSystemProductName|L"PowerEdge R740"
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSystemSerialNumber|L"H91T5G2"
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSystemSkuNumber|L"SKU-12345"
   gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|FALSE
 !endif
   gEfiMdePkgTokenSpaceGuid.PcdMaximumGuidedExtractHandler|0x10

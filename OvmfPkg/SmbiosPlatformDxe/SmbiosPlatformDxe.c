@@ -38,9 +38,15 @@ STATIC CONST SMBIOS_TABLE_TYPE0  mOvmfDefaultType0 = {
   },
   {      // BIOSCharacteristicsExtensionBytes[2]
     0,   // BiosReserved
-    0x1C // SystemReserved = VirtualMachineSupported |
-    //                  UefiSpecificationSupported |
-    //                  TargetContentDistributionEnabled
+    //
+    // SystemReserved:
+    // - UefiSpecificationSupported (Bit 4)
+    // - TargetContentDistributionEnabled (Bit 3)
+    //
+    // The VirtualMachineSupported flag (Bit 2) has been deliberately
+    // cleared to bypass VM detection mechanisms. Original value was 0x1C.
+    //
+    0x18
   },
   0,     // UINT8                     SystemBiosMajorRelease
   0,     // UINT8                     SystemBiosMinorRelease
