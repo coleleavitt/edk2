@@ -1,0 +1,6 @@
+# Create .clang-format in your EDK2 project root
+BasedOnStyle: LLVM
+IndentWidth: 2
+ColumnLimit: 100
+BreakBeforeBraces: Attach
+SpaceAfterCStyleCast: true

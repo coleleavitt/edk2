@@ -19,6 +19,9 @@
 
 #include "SmbiosPlatformDxe.h"
 
+#include "Base.h"
+#include "UefiBaseType.h"
+
 STATIC CONST SMBIOS_TABLE_TYPE0  mOvmfDefaultType0 = {
   // SMBIOS_STRUCTURE Hdr
   {
@@ -148,27 +151,31 @@ InstallAllStructures (
     CHAR16  *VendStr, *VersStr, *DateStr;
     UINTN   VendLen, VersLen, DateLen;
     CHAR8   *Type0;
+	  VendStr = (CHAR16 *)FixedPcdGetPtr (PcdFirmwareVendor);
+	  VendLen = StrLen (VendStr);
+	  // Replace virtualization-revealing vendor strings
+	  if (VendLen < 3 || StrStr(VendStr, L"EDK") || StrStr(VendStr, L"OVMF") ||
+    	  StrStr(VendStr, L"QEMU") || StrStr(VendStr, L"SeaBIOS")) {
+  		  VendStr = L"American Megatrends Inc.";
+  		  VendLen = StrLen (VendStr);
+	  }
 
-    VendStr = (CHAR16 *)FixedPcdGetPtr (PcdFirmwareVendor);
-    VendLen = StrLen (VendStr);
-    if (VendLen < 3) {
-      VendStr = L"unknown";
-      VendLen = StrLen (VendStr);
-    }
+	  VersStr = (CHAR16 *)FixedPcdGetPtr (PcdFirmwareVersionString);
+	  VersLen = StrLen (VersStr);
+  // Replace virtualization-revealing version strings
+	  if (VersLen < 3 || StrStr(VersStr, L"EDK") || StrStr(VersStr, L"OVMF") ||
+    	  StrStr(VersStr, L"QEMU") || StrStr(VersStr, L"edk2")) {
+  		  VersStr = L"F.43";  // Realistic BIOS version
+  		  VersLen = StrLen (VersStr);
+	  }
 
-    VersStr = (CHAR16 *)FixedPcdGetPtr (PcdFirmwareVersionString);
-    VersLen = StrLen (VersStr);
-    if (VersLen < 3) {
-      VersStr = L"unknown";
-      VersLen = StrLen (VersStr);
-    }
+	  DateStr = (CHAR16 *)FixedPcdGetPtr (PcdFirmwareReleaseDateString);
+	  DateLen = StrLen (DateStr);
+	  if (DateLen < 3) {
+  		  DateStr = L"04/01/2023";  // More recent date
+  		  DateLen = StrLen (DateStr);
+	  }
 
-    DateStr = (CHAR16 *)FixedPcdGetPtr (PcdFirmwareReleaseDateString);
-    DateLen = StrLen (DateStr);
-    if (DateLen < 3) {
-      DateStr = L"02/02/2022";
-      DateLen = StrLen (DateStr);
-    }
 
     DEBUG ((DEBUG_INFO, "FirmwareVendor:            \"%s\" (%d chars)\n", VendStr, VendLen));
     DEBUG ((DEBUG_INFO, "FirmwareVersionString:     \"%s\" (%d chars)\n", VersStr, VersLen));
