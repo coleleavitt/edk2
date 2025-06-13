@@ -129,10 +129,10 @@ GenerateFakeSmbiosTables(
     CurrentPtr = SmbiosData;
 
     //
-    // Create SMBIOS Type 0 (BIOS Information) - STEALTH VALUES
+    // Create SMBIOS Type 0 (BIOS Information) - STEALTH VALUES WITH REALISTIC CHARACTERISTICS
     //
     Type0 = (SMBIOS_TABLE_TYPE0 *) CurrentPtr;
-    Type0->Hdr.Type = SMBIOS_TYPE_BIOS_INFORMATION; // FIXED: Use correct constant
+    Type0->Hdr.Type = SMBIOS_TYPE_BIOS_INFORMATION;
     Type0->Hdr.Length = sizeof(SMBIOS_TABLE_TYPE0);
     Type0->Hdr.Handle = 0x0000;
     Type0->Vendor = 1; // String 1
@@ -140,11 +140,30 @@ GenerateFakeSmbiosTables(
     Type0->BiosSegment = 0xE800;
     Type0->BiosReleaseDate = 3; // String 3
     Type0->BiosSize = 0;
-    Type0->BiosCharacteristics.BiosCharacteristicsNotSupported = 1;
-    Type0->BIOSCharacteristicsExtensionBytes[0] = 0;
-    Type0->BIOSCharacteristicsExtensionBytes[1] = 0x18; // UEFI supported, VM flag cleared
-    Type0->SystemBiosMajorRelease = 0;
-    Type0->SystemBiosMinorRelease = 0;
+
+    // STEALTH FIX: Set realistic BIOS characteristics instead of "not supported"
+    // Clear the entire characteristics structure first
+    SetMem(&Type0->BiosCharacteristics, sizeof(Type0->BiosCharacteristics), 0);
+
+    // Set realistic PC BIOS characteristics
+    Type0->BiosCharacteristics.PciIsSupported = 1;
+    Type0->BiosCharacteristics.PlugAndPlayIsSupported = 1;
+    Type0->BiosCharacteristics.BiosIsUpgradable = 1; // Fixed: BiosIsUpgradable not BiosIsUpgradeable
+    Type0->BiosCharacteristics.BiosShadowingAllowed = 1;
+    Type0->BiosCharacteristics.BootFromCdIsSupported = 1;
+    Type0->BiosCharacteristics.SelectableBootIsSupported = 1;
+    Type0->BiosCharacteristics.EDDSpecificationIsSupported = 1; // FIXED: EDDSpecificationIsSupported (double D)
+    Type0->BiosCharacteristics.PrintScreenIsSupported = 1;
+    Type0->BiosCharacteristics.Keyboard8042IsSupported = 1;
+    Type0->BiosCharacteristics.SerialIsSupported = 1;
+    Type0->BiosCharacteristics.PrinterIsSupported = 1;
+    // CRITICAL: Do NOT set BiosCharacteristicsNotSupported = 1
+
+    Type0->BIOSCharacteristicsExtensionBytes[0] = 0x0B; // ACPI, USB Legacy, LS-120 Boot supported
+    // CRITICAL STEALTH FIX: Ensure VM flag (bit 2) is absolutely cleared
+    Type0->BIOSCharacteristicsExtensionBytes[1] = 0x10; // Only UEFI supported (bit 4), VM flag cleared
+    Type0->SystemBiosMajorRelease = 2; // Realistic values instead of 0
+    Type0->SystemBiosMinorRelease = 43; // Matches version F.43
     Type0->EmbeddedControllerFirmwareMajorRelease = 0xFF;
     Type0->EmbeddedControllerFirmwareMinorRelease = 0xFF;
 
@@ -156,7 +175,7 @@ GenerateFakeSmbiosTables(
     // Create SMBIOS Type 1 (System Information) - STEALTH VALUES
     //
     Type1 = (SMBIOS_TABLE_TYPE1 *) CurrentPtr;
-    Type1->Hdr.Type = SMBIOS_TYPE_SYSTEM_INFORMATION; // FIXED: Use correct constant
+    Type1->Hdr.Type = SMBIOS_TYPE_SYSTEM_INFORMATION;
     Type1->Hdr.Length = sizeof(SMBIOS_TABLE_TYPE1);
     Type1->Hdr.Handle = 0x0001;
     Type1->Manufacturer = 1; // String 1
@@ -192,6 +211,7 @@ GenerateFakeSmbiosTables(
     DEBUG((DEBUG_INFO, "STEALTH QEMU: BIOS Version: %a\n", STEALTH_BIOS_VERSION));
     DEBUG((DEBUG_INFO, "STEALTH QEMU: System Manufacturer: %a\n", STEALTH_SYSTEM_MANUFACTURER));
     DEBUG((DEBUG_INFO, "STEALTH QEMU: System Product: %a\n", STEALTH_SYSTEM_PRODUCT));
+    DEBUG((DEBUG_INFO, "STEALTH QEMU: Applied realistic BIOS characteristics and cleared VM flag\n"));
 
     return SmbiosData;
 }
