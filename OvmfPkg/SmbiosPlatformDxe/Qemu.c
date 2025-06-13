@@ -1,7 +1,7 @@
 /** @file
   Find and extract QEMU SMBIOS data from fw_cfg.
 
-  This file has been heavily modified to generate fake SMBIOS tables
+  This file has been completely rewritten to generate fake SMBIOS tables
   to bypass Virtual Machine detection mechanisms by providing realistic
   hardware vendor information instead of QEMU/virtualization signatures.
 
@@ -30,48 +30,6 @@
 #define STEALTH_SYSTEM_SERIAL       "2M3WK73"
 #define STEALTH_SYSTEM_SKU          "SKU=NotProvided;ModelName=PowerEdge R740"
 #define STEALTH_SYSTEM_FAMILY       "PowerEdge"
-
-//
-// SMBIOS Type 0 (BIOS Information) Structure
-//
-#pragma pack(1)
-typedef struct {
-    SMBIOS_STRUCTURE Hdr;
-    UINT8 Vendor;
-    UINT8 BiosVersion;
-    UINT16 BiosSegment;
-    UINT8 BiosReleaseDate;
-    UINT8 BiosSize;
-    UINT64 BiosCharacteristics;
-    UINT8 BIOSCharacteristicsExtensionBytes[2];
-    UINT8 SystemBiosMajorRelease;
-    UINT8 SystemBiosMinorRelease;
-    UINT8 EmbeddedControllerFirmwareMajorRelease;
-    UINT8 EmbeddedControllerFirmwareMinorRelease;
-} STEALTH_SMBIOS_TYPE0;
-
-//
-// SMBIOS Type 1 (System Information) Structure
-//
-typedef struct {
-    SMBIOS_STRUCTURE Hdr;
-    UINT8 Manufacturer;
-    UINT8 ProductName;
-    UINT8 Version;
-    UINT8 SerialNumber;
-    EFI_GUID Uuid;
-    UINT8 WakeUpType;
-    UINT8 SKUNumber;
-    UINT8 Family;
-} STEALTH_SMBIOS_TYPE1;
-
-//
-// SMBIOS End-of-Table (Type 127) Structure
-//
-typedef struct {
-    SMBIOS_STRUCTURE Hdr;
-} STEALTH_SMBIOS_TYPE127;
-#pragma pack()
 
 /**
   Calculate and append strings to SMBIOS table
@@ -119,14 +77,14 @@ GenerateFakeSmbiosTables(
     VOID) {
     UINT8 *SmbiosData;
     UINT8 *CurrentPtr;
-    STEALTH_SMBIOS_TYPE0 *Type0;
-    STEALTH_SMBIOS_TYPE1 *Type1;
-    STEALTH_SMBIOS_TYPE127 *Type127;
+    SMBIOS_TABLE_TYPE0 *Type0;
+    SMBIOS_TABLE_TYPE1 *Type1;
+    SMBIOS_STRUCTURE *Type127;
     UINTN TotalSize;
     UINTN StringsSize;
     CHAR8 *Type0Strings[3];
     CHAR8 *Type1Strings[6];
-    EFI_GUID SystemUuid = {
+    GUID SystemUuid = {
         0x12345678, 0x1234, 0x5678, {0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0}
     };
 
@@ -149,18 +107,18 @@ GenerateFakeSmbiosTables(
     //
     // Calculate total size needed
     //
-    TotalSize = sizeof(STEALTH_SMBIOS_TYPE0) +
+    TotalSize = sizeof(SMBIOS_TABLE_TYPE0) +
                 AsciiStrLen(STEALTH_BIOS_VENDOR) + 1 +
                 AsciiStrLen(STEALTH_BIOS_VERSION) + 1 +
                 AsciiStrLen(STEALTH_BIOS_RELEASE_DATE) + 1 + 1 + // Extra null terminator
-                sizeof(STEALTH_SMBIOS_TYPE1) +
+                sizeof(SMBIOS_TABLE_TYPE1) +
                 AsciiStrLen(STEALTH_SYSTEM_MANUFACTURER) + 1 +
                 AsciiStrLen(STEALTH_SYSTEM_PRODUCT) + 1 +
                 AsciiStrLen(STEALTH_SYSTEM_VERSION) + 1 +
                 AsciiStrLen(STEALTH_SYSTEM_SERIAL) + 1 +
                 AsciiStrLen(STEALTH_SYSTEM_SKU) + 1 +
                 AsciiStrLen(STEALTH_SYSTEM_FAMILY) + 1 + 1 + // Extra null terminator
-                sizeof(STEALTH_SMBIOS_TYPE127) + 2; // Type 127 + double null
+                sizeof(SMBIOS_STRUCTURE) + 2; // Type 127 + double null
 
     SmbiosData = AllocateZeroPool(TotalSize);
     if (SmbiosData == NULL) {
@@ -173,16 +131,16 @@ GenerateFakeSmbiosTables(
     //
     // Create SMBIOS Type 0 (BIOS Information) - STEALTH VALUES
     //
-    Type0 = (STEALTH_SMBIOS_TYPE0 *) CurrentPtr;
-    Type0->Hdr.Type = EFI_SMBIOS_TYPE_BIOS_INFORMATION;
-    Type0->Hdr.Length = sizeof(STEALTH_SMBIOS_TYPE0);
+    Type0 = (SMBIOS_TABLE_TYPE0 *) CurrentPtr;
+    Type0->Hdr.Type = SMBIOS_TYPE_BIOS_INFORMATION; // FIXED: Use correct constant
+    Type0->Hdr.Length = sizeof(SMBIOS_TABLE_TYPE0);
     Type0->Hdr.Handle = 0x0000;
     Type0->Vendor = 1; // String 1
     Type0->BiosVersion = 2; // String 2
     Type0->BiosSegment = 0xE800;
     Type0->BiosReleaseDate = 3; // String 3
     Type0->BiosSize = 0;
-    Type0->BiosCharacteristics = 0x08; // BIOS characteristics not supported
+    Type0->BiosCharacteristics.BiosCharacteristicsNotSupported = 1;
     Type0->BIOSCharacteristicsExtensionBytes[0] = 0;
     Type0->BIOSCharacteristicsExtensionBytes[1] = 0x18; // UEFI supported, VM flag cleared
     Type0->SystemBiosMajorRelease = 0;
@@ -190,39 +148,39 @@ GenerateFakeSmbiosTables(
     Type0->EmbeddedControllerFirmwareMajorRelease = 0xFF;
     Type0->EmbeddedControllerFirmwareMinorRelease = 0xFF;
 
-    CurrentPtr += sizeof(STEALTH_SMBIOS_TYPE0);
+    CurrentPtr += sizeof(SMBIOS_TABLE_TYPE0);
     StringsSize = AppendSmbiosStrings(CurrentPtr, Type0Strings, 3);
     CurrentPtr += StringsSize;
 
     //
     // Create SMBIOS Type 1 (System Information) - STEALTH VALUES
     //
-    Type1 = (STEALTH_SMBIOS_TYPE1 *) CurrentPtr;
-    Type1->Hdr.Type = EFI_SMBIOS_TYPE_SYSTEM_INFORMATION;
-    Type1->Hdr.Length = sizeof(STEALTH_SMBIOS_TYPE1);
+    Type1 = (SMBIOS_TABLE_TYPE1 *) CurrentPtr;
+    Type1->Hdr.Type = SMBIOS_TYPE_SYSTEM_INFORMATION; // FIXED: Use correct constant
+    Type1->Hdr.Length = sizeof(SMBIOS_TABLE_TYPE1);
     Type1->Hdr.Handle = 0x0001;
     Type1->Manufacturer = 1; // String 1
     Type1->ProductName = 2; // String 2
     Type1->Version = 3; // String 3
     Type1->SerialNumber = 4; // String 4
-    CopyMem(&Type1->Uuid, &SystemUuid, sizeof(EFI_GUID));
-    Type1->WakeUpType = 0x06; // Power Switch
+    CopyMem(&Type1->Uuid, &SystemUuid, sizeof(GUID));
+    Type1->WakeUpType = SystemWakeupTypePowerSwitch;
     Type1->SKUNumber = 5; // String 5
     Type1->Family = 6; // String 6
 
-    CurrentPtr += sizeof(STEALTH_SMBIOS_TYPE1);
+    CurrentPtr += sizeof(SMBIOS_TABLE_TYPE1);
     StringsSize = AppendSmbiosStrings(CurrentPtr, Type1Strings, 6);
     CurrentPtr += StringsSize;
 
     //
     // Create SMBIOS Type 127 (End-of-Table)
     //
-    Type127 = (STEALTH_SMBIOS_TYPE127 *) CurrentPtr;
-    Type127->Hdr.Type = 127;
-    Type127->Hdr.Length = sizeof(STEALTH_SMBIOS_TYPE127);
-    Type127->Hdr.Handle = 0x007F;
+    Type127 = (SMBIOS_STRUCTURE *) CurrentPtr;
+    Type127->Type = 127;
+    Type127->Length = sizeof(SMBIOS_STRUCTURE);
+    Type127->Handle = 0x007F;
 
-    CurrentPtr += sizeof(STEALTH_SMBIOS_TYPE127);
+    CurrentPtr += sizeof(SMBIOS_STRUCTURE);
 
     // Add double null terminator for end of table
     *CurrentPtr++ = 0;
