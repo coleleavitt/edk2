@@ -161,8 +161,8 @@ GenerateFakeSmbiosTables(
 
     Type0->BIOSCharacteristicsExtensionBytes[0] = 0x0B; // ACPI, USB Legacy, LS-120 Boot supported
     // CRITICAL STEALTH FIX: Ensure VM flag (bit 2) is absolutely cleared
-    Type0->BIOSCharacteristicsExtensionBytes[1] = 0x10; // Only UEFI supported (bit 4), VM flag cleared
-    Type0->SystemBiosMajorRelease = 2; // Realistic values instead of 0
+    Type0->BIOSCharacteristicsExtensionBytes[1] = 0x08; // Only UEFI supported (bit 3), VM flag
+    // cleared Type0->SystemBiosMajorRelease = 2; // Realistic values instead of 0
     Type0->SystemBiosMinorRelease = 43; // Matches version F.43
     Type0->EmbeddedControllerFirmwareMajorRelease = 0xFF;
     Type0->EmbeddedControllerFirmwareMinorRelease = 0xFF;
